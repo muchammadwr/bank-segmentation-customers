@@ -1,4 +1,4 @@
-TransactionAmount,TransactionType,Location,Channel,CustomerAge,CustomerOccupation,TransactionDuration,LoginAttempts,AccountBalance,NewCol,Target
+TransactionAmount,TransactionType,Location,Channel,CustomerAge,CustomerOccupation,TransactionDuration,LoginAttempts,AccountBalance,AgeGroup,Target
 -1.1119223584377067,1,36,0,1.4266360181996707,0,-0.5415676043705149,0.0,0.0029179859764963696,2,1
 0.54692641293755,1,15,0,1.313889398582493,0,0.30850152230456834,0.0,2.2165305377634645,2,0
 -0.5979838463617608,1,23,2,-1.44840278203836,3,-0.8957630738184661,0.0,-1.0185126379462432,0,1
