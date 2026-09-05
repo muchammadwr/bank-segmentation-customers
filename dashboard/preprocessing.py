@@ -21,6 +21,9 @@ scaler_TransactionDuration = joblib.load("models/scaler_TransactionDuration.jobl
 scaler_LoginAttempts = joblib.load("models/scaler_LoginAttempts.joblib")
 scaler_AccountBalance = joblib.load("models/scaler_AccountBalance.joblib")
 
+# PCA
+PCA_model_clustering = joblib.load("models/PCA_model_clustering.h5")
+
 
 # ================================================
 # PREPROCESSING
@@ -62,3 +65,5 @@ def data_preprocessing(data):
     df["AccountBalance"] = scaler_AccountBalance.transform(
         data["scaler_AccountBalance"]
     )
+
+    # PCA
