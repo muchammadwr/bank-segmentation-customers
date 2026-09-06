@@ -5,8 +5,19 @@ import numpy as np
 import pandas as pd
 
 
+# ==========================================
+# PATH
+# ==========================================
+
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODEL_DIR = BASE_DIR / "models"
+
+
+# ==========================================
+# FEATURES TRAINING
+# ==========================================
+
 
 FEATURE_COLUMNS = [
     "TransactionAmount",
@@ -21,37 +32,86 @@ FEATURE_COLUMNS = [
     "AgeGroup",
 ]
 
-NUMERICAL_COLUMNS = [
-    "TransactionAmount",
-    "CustomerAge",
-    "TransactionDuration",
-    "LoginAttempts",
-    "AccountBalance",
-]
+# ==========================================
+# LOAD ENCODER
+# ==========================================
 
-CATEGORICAL_COLUMNS = [
-    "TransactionType",
-    "Location",
-    "Channel",
-    "CustomerOccupation",
-    "AgeGroup",
-]
+
+encoder_TransactionType = joblib.load(MODEL_DIR / "encoder_TransactionType.joblib")
+encoder_Location = joblib.load(MODEL_DIR / "encoder_Location.joblib")
+encoder_Channel = joblib.load(MODEL_DIR / "encoder_Channel.joblib")
+encoder_CustomerOccupation = joblib.load(
+    MODEL_DIR / "encoder_CustomerOccupation.joblib"
+)
+encoder_AgeGroup = joblib.load(MODEL_DIR / "encoder_AgeGroup.joblib")
+age_group_config = joblib.load(MODEL_DIR / "age_group_bins.joblib")
+
+
+# ==========================================
+# LOAD SCALER
+# ==========================================
+
+
+scaler_TransactionAmount = joblib.load(MODEL_DIR / "scaler_TransactionAmount.joblib")
+scaler_CustomerAge = joblib.load(MODEL_DIR / "scaler_CustomerAge.joblib")
+scaler_TransactionDuration = joblib.load(
+    MODEL_DIR / "scaler_TransactionDuration.joblib"
+)
+scaler_LoginAttempts = joblib.load(MODEL_DIR / "scaler_LoginAttempts.joblib")
+scaler_AccountBalance = joblib.load(MODEL_DIR / "scaler_AccountBalance.joblib")
 
 
 def load_preprocessors():
+
     encoders = {
-        column: joblib.load(MODEL_DIR / f"encoder_{column}.joblib")
-        for column in CATEGORICAL_COLUMNS
+        "TransactionType": encoder_TransactionType,
+        "Location": encoder_Location,
+        "Channel": encoder_Channel,
+        "CustomerOccupation": encoder_CustomerOccupation,
+        "AgeGroup": encoder_AgeGroup,
     }
 
     scalers = {
-        column: joblib.load(MODEL_DIR / f"scaler_{column}.joblib")
-        for column in NUMERICAL_COLUMNS
+        "TransactionAmount": scaler_TransactionAmount,
+        "CustomerAge": scaler_CustomerAge,
+        "TransactionDuration": scaler_TransactionDuration,
+        "LoginAttempts": scaler_LoginAttempts,
+        "AccountBalance": scaler_AccountBalance,
     }
 
-    age_config = joblib.load(MODEL_DIR / "age_group_bins.joblib")
+    return encoders, scalers, age_group_config
 
-    return encoders, scalers, age_config
+
+# ==========================================
+# CREATE AGE GROUP
+# ==========================================
+def add_age_group(data, age_scaler, age_config):
+
+    data = data.copy()
+
+    scaled_age = age_scaler.transform(data[["CustomerAge"]]).ravel()
+
+    bins = np.asarray(
+        age_config["bins"],
+        dtype=float,
+    ).copy()
+
+    bins[0] = -np.inf
+    bins[-1] = np.inf
+
+    data["AgeGroup"] = pd.cut(
+        scaled_age,
+        bins=bins,
+        labels=age_config["labels"],
+        include_lowest=True,
+    )
+
+    return data
+
+
+# ==========================================
+# CATEGORICAL VALIDATION
+# ==========================================
 
 
 def validate_categories(series, categories):
@@ -63,76 +123,82 @@ def validate_categories(series, categories):
         raise ValueError(f"Kategori tidak dikenal pada {series.name}: {values}")
 
 
-def add_age_group(data, age_scaler, age_config):
-    result = data.copy()
-
-    # Batas bin training berasal dari CustomerAge
-    # yang sudah distandardisasi.
-    scaled_age = age_scaler.transform(result[["CustomerAge"]]).ravel()
-
-    bins = np.asarray(
-        age_config["bins"],
-        dtype=float,
-    ).copy()
-
-    # Kebijakan input baru: usia di luar rentang training
-    # masuk kelompok terluar; batas internal tidak berubah.
-    bins[0] = -np.inf
-    bins[-1] = np.inf
-
-    result["AgeGroup"] = pd.cut(
-        scaled_age,
-        bins=bins,
-        labels=age_config["labels"],
-        include_lowest=True,
-    )
-
-    # CustomerAge pada result tetap dalam satuan asli.
-    return result
+# ==========================================
+# PREPROCESSING CLUSTERING
+# ==========================================
 
 
 def preprocess_clustering(data, encoders, scalers):
-    result = data.loc[:, FEATURE_COLUMNS].copy()
+    data = data.loc[:, FEATURE_COLUMNS].copy()
+    df = pd.DataFrame(index=data.index)
 
-    for column in CATEGORICAL_COLUMNS:
-        encoder = encoders[column]
-
+    for column, encoder in encoders.items():
         validate_categories(
-            result[column],
+            data[column],
             encoder.classes_,
         )
 
-        result[column] = encoder.transform(result[column])
+    df["TransactionAmount"] = (
+        scalers["TransactionAmount"].transform(data[["TransactionAmount"]]).ravel()
+    )
 
-    for column in NUMERICAL_COLUMNS:
-        result[column] = scalers[column].transform(result[[column]]).ravel()
+    df["CustomerAge"] = scalers["CustomerAge"].transform(data[["CustomerAge"]]).ravel()
 
-    return result.loc[:, FEATURE_COLUMNS]
+    df["TransactionDuration"] = (
+        scalers["TransactionDuration"].transform(data[["TransactionDuration"]]).ravel()
+    )
+
+    df["LoginAttempts"] = (
+        scalers["LoginAttempts"].transform(data[["LoginAttempts"]]).ravel()
+    )
+
+    df["AccountBalance"] = (
+        scalers["AccountBalance"].transform(data[["AccountBalance"]]).ravel()
+    )
+
+    # Encoding kategori
+    df["TransactionType"] = encoders["TransactionType"].transform(
+        data["TransactionType"]
+    )
+
+    df["Location"] = encoders["Location"].transform(data["Location"])
+
+    df["Channel"] = encoders["Channel"].transform(data["Channel"])
+
+    df["CustomerOccupation"] = encoders["CustomerOccupation"].transform(
+        data["CustomerOccupation"]
+    )
+
+    df["AgeGroup"] = encoders["AgeGroup"].transform(data["AgeGroup"])
+
+    return df.loc[:, FEATURE_COLUMNS]
+
+
+# ==========================================
+# PREPROCESSING CLASSIFICATION
+# ==========================================
 
 
 def preprocess_classification(data, schema):
-    result = data.loc[:, FEATURE_COLUMNS].copy()
-
+    data = data.loc[:, FEATURE_COLUMNS].copy()
     for column, categories in schema["categories"].items():
         validate_categories(
-            result[column],
+            data[column],
             categories,
         )
 
-        # Seluruh kategori training harus tersedia
-        # agar drop_first memakai kategori acuan yang sama.
-        result[column] = pd.Categorical(
-            result[column],
+        data[column] = pd.Categorical(
+            data[column],
             categories=categories,
         )
 
-    result = pd.get_dummies(
-        result,
+    df = pd.get_dummies(
+        data,
         columns=list(schema["categories"]),
         drop_first=True,
     )
 
-    return result.reindex(
+    return df.reindex(
         columns=schema["feature_columns"],
         fill_value=0,
     )

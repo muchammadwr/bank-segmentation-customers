@@ -164,7 +164,25 @@ def display_result(state_key, target_column):
     result = st.session_state[state_key]
     label = int(result[target_column].iloc[0])
 
+    descriptions = {
+        0: (
+            "Cluster 0 dengan Usia, durasi transaksi, dan saldo sedikit lebih tinggi, "
+            "dengan nominal transaksi sedikit lebih rendah dari rata-rata."
+        ),
+        1: (
+            "Cluster 1 dengan Usia, durasi transaksi, dan saldo sedikit lebih rendah, "
+            "dengan nominal transaksi sedikit lebih tinggi dari rata-rata."
+        ),
+    }
+
     st.success(f"Hasil prediksi: Cluster {label}")
+
+    st.info(descriptions.get(label, "Deskripsi cluster belum tersedia."))
+
+    st.caption(
+        "Perbedaan kedua cluster kecil dan mendekati rata-rata "
+        "data, sehingga belum menunjukkan persona nasabah yang kuat."
+    )
 
     st.dataframe(
         result,
