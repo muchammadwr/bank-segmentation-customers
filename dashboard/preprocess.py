@@ -86,26 +86,20 @@ def load_preprocessors():
 # CREATE AGE GROUP
 # ==========================================
 def add_age_group(data, age_scaler, age_config):
-
     data = data.copy()
-
     scaled_age = age_scaler.transform(data[["CustomerAge"]]).ravel()
-
     bins = np.asarray(
         age_config["bins"],
         dtype=float,
     ).copy()
-
     bins[0] = -np.inf
     bins[-1] = np.inf
-
     data["AgeGroup"] = pd.cut(
         scaled_age,
         bins=bins,
         labels=age_config["labels"],
         include_lowest=True,
     )
-
     return data
 
 
@@ -116,10 +110,8 @@ def add_age_group(data, age_scaler, age_config):
 
 def validate_categories(series, categories):
     unknown = ~series.isin(categories)
-
     if unknown.any():
         values = series.loc[unknown].unique().tolist()
-
         raise ValueError(f"Kategori tidak dikenal pada {series.name}: {values}")
 
 
@@ -131,46 +123,35 @@ def validate_categories(series, categories):
 def preprocess_clustering(data, encoders, scalers):
     data = data.loc[:, FEATURE_COLUMNS].copy()
     df = pd.DataFrame(index=data.index)
-
     for column, encoder in encoders.items():
         validate_categories(
             data[column],
             encoder.classes_,
         )
-
+    # Scaler
     df["TransactionAmount"] = (
         scalers["TransactionAmount"].transform(data[["TransactionAmount"]]).ravel()
     )
-
     df["CustomerAge"] = scalers["CustomerAge"].transform(data[["CustomerAge"]]).ravel()
-
     df["TransactionDuration"] = (
         scalers["TransactionDuration"].transform(data[["TransactionDuration"]]).ravel()
     )
-
     df["LoginAttempts"] = (
         scalers["LoginAttempts"].transform(data[["LoginAttempts"]]).ravel()
     )
-
     df["AccountBalance"] = (
         scalers["AccountBalance"].transform(data[["AccountBalance"]]).ravel()
     )
-
-    # Encoding kategori
+    # Encoding 
     df["TransactionType"] = encoders["TransactionType"].transform(
         data["TransactionType"]
     )
-
     df["Location"] = encoders["Location"].transform(data["Location"])
-
     df["Channel"] = encoders["Channel"].transform(data["Channel"])
-
     df["CustomerOccupation"] = encoders["CustomerOccupation"].transform(
         data["CustomerOccupation"]
     )
-
     df["AgeGroup"] = encoders["AgeGroup"].transform(data["AgeGroup"])
-
     return df.loc[:, FEATURE_COLUMNS]
 
 
@@ -186,18 +167,15 @@ def preprocess_classification(data, schema):
             data[column],
             categories,
         )
-
         data[column] = pd.Categorical(
             data[column],
             categories=categories,
         )
-
     df = pd.get_dummies(
         data,
         columns=list(schema["categories"]),
         drop_first=True,
     )
-
     return df.reindex(
         columns=schema["feature_columns"],
         fill_value=0,

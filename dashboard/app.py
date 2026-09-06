@@ -10,8 +10,10 @@ from prediction import (
 
 
 # ==========================================
-# KONFIGURASI HALAMAN
+# CONFIGURATION PAGE
 # ==========================================
+
+
 st.set_page_config(
     page_title="Segmentasi Nasabah",
     page_icon="🏦",
@@ -19,8 +21,10 @@ st.set_page_config(
 
 
 # ==========================================
-# LOAD ARTEFAK
+# LOAD
 # ==========================================
+
+
 @st.cache_resource
 def load_shared_resources():
     return load_preprocessors()
@@ -34,9 +38,7 @@ def load_cluster_model():
 @st.cache_resource
 def load_classifier():
     model = joblib.load(MODEL_DIR / "decision_tree_model.h5")
-
     schema = joblib.load(MODEL_DIR / "classification_schema.joblib")
-
     return model, schema
 
 
@@ -54,6 +56,8 @@ except FileNotFoundError as error:
 # ==========================================
 # FORM INPUT
 # ==========================================
+
+
 def transaction_form(prefix, categories):
     with st.form(key=f"{prefix}_form"):
         left, right = st.columns(2)
@@ -155,8 +159,10 @@ def transaction_form(prefix, categories):
 
 
 # ==========================================
-# TAMPILKAN HASIL TERSIMPAN
+# SHOW RESULTS
 # ==========================================
+
+
 def display_result(state_key, target_column):
     if state_key not in st.session_state:
         return
@@ -194,6 +200,8 @@ def display_result(state_key, target_column):
 # ==========================================
 # TABS
 # ==========================================
+
+
 tab_cluster, tab_classification = st.tabs(
     [
         "📊 Clustering",
