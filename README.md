@@ -1,4 +1,4 @@
-# Bank Transaction Fraud Detection
+# Bank Transaction Model Transaction
 
 ## Project Overview
 
@@ -19,6 +19,7 @@
 ## Tools
 
 [...]
+
 ## Project Workflow
 
 ```mermaid

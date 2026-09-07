@@ -142,7 +142,7 @@ def preprocess_clustering(data, encoders, scalers):
     df["AccountBalance"] = (
         scalers["AccountBalance"].transform(data[["AccountBalance"]]).ravel()
     )
-    # Encoding 
+    # Encoding
     df["TransactionType"] = encoders["TransactionType"].transform(
         data["TransactionType"]
     )
