@@ -1,6 +1,7 @@
 import joblib
 import pandas as pd
 import streamlit as st
+from preprocessor import preprocess_clustering
 
 
 # ==========================================
@@ -31,27 +32,9 @@ tab_clustering, tab_classification = st.tabs(
     ]
 )
 
-# ==========================================
-# FEATURE COLUMNS
-# ==========================================
-
-features = {
-    "TransactionAmount",
-    "TransactionType",
-    "Location",
-    "Channel",
-    "CustomerAge",
-    "CustomerOccupation",
-    "TransactionDuration",
-    "LoginAttempts",
-    "AccountBalance",
-    "AgeGroup",
-    "Target",
-}
-
 
 # ==========================================
-# CATEGORICAL FEATURES
+# CATEGORICAL OPTIONS
 # ==========================================
 locations = [
     "San Diego",
@@ -112,13 +95,13 @@ CustomerOccupation = ["Doctor", "Student", "Retired", "Engineer"]
 # ==========================================
 def create_age_group(age):
     if 18 <= age <= 32:
-        return "Rendah"
+        return "rendah"
 
     elif 33 <= age <= 55:
-        return "Sedang"
+        return "sedang"
 
     elif 56 <= age <= 80:
-        return "Tinggi"
+        return "tinggi"
 
     else:
         raise ValueError("CustomerAge harus berada antara 18 dan 80.")
@@ -137,13 +120,11 @@ with tab_clustering:
                 "Transaction Amount", min_value=0.0, value=100.0
             )
 
-            transaction_type = st.number_input(
-                "Transaction Type", min_value=0.0, value=100.0
-            )
+            transaction_type = st.selectbox("Transaction Type", options=TransactionType)
 
             location = st.selectbox("Location", options=locations)
 
-            channel = st.number_input("Channel")
+            channel = st.selectbox("Channel", options=Channel)
 
         with right_column:
             customer_age = st.number_input(
@@ -177,14 +158,51 @@ with tab_clustering:
                 value=5000.0,
             )
 
-            age_group = st.selectbox(
-                "Age Group", create_age_group(customer_age), disabled=True
-            )
-
-        submitted = st.form_submit_button(
-            "Process Data",
+        predict = st.form_submit_button(
+            "Prediction",
             use_container_width=True,
         )
+
+        if predict:
+            try:
+                age_group = create_age_group(customer_age)
+                input_data = pd.DataFrame(
+                    [
+                        {
+                            "TransactionAmount": transaction_amount,
+                            "TransactionType": transaction_type,
+                            "Location": location,
+                            "Channel": channel,
+                            "CustomerAge": customer_age,
+                            "CustomerOccupation": customer_occupation,
+                            "TransactionDuration": transaction_duration,
+                            "LoginAttempts": login_attempts,
+                            "AccountBalance": account_balance,
+                            "AgeGroupBin": age_group,
+                        }
+                    ],
+                )
+                st.success("Input data was successfully created.")
+                st.dataframe(input_data)
+                processed_data = preprocess_clustering(input_data)
+                st.success("Data was successfully preprocessed.")
+
+                with st.expander("View Raw Data"):
+                    st.dataframe(
+                        input_data,
+                        hide_index=True,
+                        use_container_width=True,
+                    )
+
+                with st.expander("View Preprocessed Data"):
+                    st.dataframe(
+                        processed_data,
+                        hide_index=True,
+                        use_container_width=True,
+                    )
+
+            except ValueError as error:
+                st.error(str(error))
 
 
 with tab_classification:
