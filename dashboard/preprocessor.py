@@ -113,3 +113,7 @@ def preprocess_clustering(data):
     result[NUMERICAL_COLUMNS] = scaler_numerical.transform(result[NUMERICAL_COLUMNS])
 
     return result.loc[:, FEATURE_COLUMNS]
+
+
+def preprocess_classification(data):
+    result = data.copy()
