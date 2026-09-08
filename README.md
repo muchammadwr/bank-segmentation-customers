@@ -24,13 +24,13 @@
 
 ```mermaid
 flowchart TD
-    A["Data tanpa label"] --> B["Preprocessing"]
-    B --> C["Clustering"]
-    C --> D["Cluster 0, 1, 2, ..."]
-    D --> E["Interpretasi dan nama segmen"]
-    D --> F["Classification"]
-    F --> G["Prediksi segmen nasabah baru"]
-    G --> H["Streamlit Dashboard"]
+    A["Input dari form"] --> B["Buat AgeGroup"]
+    B --> C["Clustering: label encoding dan scaling"]
+    B --> D["Classification: one-hot encoding"]
+    C --> E["KMeans memprediksi Cluster"]
+    D --> F["Decision Tree memprediksi Target"]
+    E --> G["Tampilkan label dan deskripsi"]
+    F --> G
 ```
 
 ## Key Insights
