@@ -19,6 +19,7 @@ MODEL_DIR = BASE_DIR / "models"
 
 
 clustering_model = joblib.load(MODEL_DIR / "model_clustering.h5")
+classification_model = joblib.load(MODEL_DIR / "decision_tree_model.h5")
 
 # ==========================================
 # CLUSTER INFORMATION
