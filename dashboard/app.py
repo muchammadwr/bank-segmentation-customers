@@ -1,12 +1,6 @@
-import joblib
 import pandas as pd
 import streamlit as st
-
-from preprocess import MODEL_DIR, load_preprocessors
-from prediction import (
-    predict_cluster,
-    predict_classification,
-)
+from prediction import predict_cluster
 
 
 # ==========================================
@@ -15,194 +9,22 @@ from prediction import (
 
 
 st.set_page_config(
-    page_title="Segmentasi Nasabah",
+    page_title="Bank Transaction Segmentation",
     page_icon="🏦",
 )
-
 
 # ==========================================
 # LOAD
 # ==========================================
 
 
-@st.cache_resource
-def load_shared_resources():
-    return load_preprocessors()
+st.title("🏦 Bank Transaction Segmentation")
+st.write(
+    "Enter customer and transaction information to identify the transaction segment."
+)
 
 
-@st.cache_resource
-def load_cluster_model():
-    return joblib.load(MODEL_DIR / "model_clustering.h5")
-
-
-@st.cache_resource
-def load_classifier():
-    model = joblib.load(MODEL_DIR / "decision_tree_model.h5")
-    schema = joblib.load(MODEL_DIR / "classification_schema.joblib")
-    return model, schema
-
-
-st.title("🏦 Segmentasi Nasabah")
-st.write("Masukkan data transaksi dalam satuan asli. Kelompok usia dihitung otomatis.")
-
-try:
-    encoders, scalers, age_config = load_shared_resources()
-
-except FileNotFoundError as error:
-    st.error(f"Artefak preprocessing belum tersedia: {error.filename}")
-    st.stop()
-
-
-# ==========================================
-# FORM INPUT
-# ==========================================
-
-
-def transaction_form(prefix, categories):
-    with st.form(key=f"{prefix}_form"):
-        left, right = st.columns(2)
-
-        with left:
-            transaction_amount = st.number_input(
-                "Jumlah transaksi",
-                min_value=0.0,
-                value=500.0,
-                key=f"{prefix}_amount",
-            )
-
-            transaction_type = st.selectbox(
-                "Jenis transaksi",
-                options=categories["TransactionType"],
-                key=f"{prefix}_type",
-            )
-
-            location = st.selectbox(
-                "Lokasi",
-                options=categories["Location"],
-                key=f"{prefix}_location",
-            )
-
-            channel = st.selectbox(
-                "Channel",
-                options=categories["Channel"],
-                key=f"{prefix}_channel",
-            )
-
-        with right:
-            customer_age = st.number_input(
-                "Usia nasabah",
-                min_value=18,
-                max_value=80,
-                value=30,
-                step=1,
-                key=f"{prefix}_age",
-            )
-
-            customer_occupation = st.selectbox(
-                "Pekerjaan",
-                options=categories["CustomerOccupation"],
-                key=f"{prefix}_occupation",
-            )
-
-            transaction_duration = st.number_input(
-                "Durasi transaksi",
-                min_value=0.0,
-                value=60.0,
-                help="Gunakan satuan yang sama dengan dataset.",
-                key=f"{prefix}_duration",
-            )
-
-            # Dataset training setelah filtering hanya
-            # memiliki LoginAttempts = 1.
-            login_attempts = st.number_input(
-                "Jumlah percobaan login",
-                min_value=1,
-                value=1,
-                step=1,
-                disabled=True,
-                help=(
-                    "Dibatasi ke 1 karena hanya nilai ini "
-                    "yang tersedia pada data training."
-                ),
-                key=f"{prefix}_login",
-            )
-
-            account_balance = st.number_input(
-                "Saldo rekening",
-                min_value=0.0,
-                value=5000.0,
-                key=f"{prefix}_balance",
-            )
-
-        submitted = st.form_submit_button(
-            "Prediksi",
-            use_container_width=True,
-        )
-
-    data = pd.DataFrame(
-        [
-            {
-                "TransactionAmount": transaction_amount,
-                "TransactionType": transaction_type,
-                "Location": location,
-                "Channel": channel,
-                "CustomerAge": customer_age,
-                "CustomerOccupation": customer_occupation,
-                "TransactionDuration": transaction_duration,
-                "LoginAttempts": login_attempts,
-                "AccountBalance": account_balance,
-            }
-        ]
-    )
-
-    return data, submitted
-
-
-# ==========================================
-# SHOW RESULTS
-# ==========================================
-
-
-def display_result(state_key, target_column):
-    if state_key not in st.session_state:
-        return
-
-    result = st.session_state[state_key]
-    label = int(result[target_column].iloc[0])
-
-    descriptions = {
-        0: (
-            "Cluster 0 dengan Usia, durasi transaksi, dan saldo sedikit lebih tinggi, "
-            "dengan nominal transaksi sedikit lebih rendah dari rata-rata."
-        ),
-        1: (
-            "Cluster 1 dengan Usia, durasi transaksi, dan saldo sedikit lebih rendah, "
-            "dengan nominal transaksi sedikit lebih tinggi dari rata-rata."
-        ),
-    }
-
-    st.success(f"Hasil prediksi: Cluster {label}")
-
-    st.info(descriptions.get(label, "Deskripsi cluster belum tersedia."))
-
-    st.caption(
-        "Perbedaan kedua cluster kecil dan mendekati rata-rata "
-        "data, sehingga belum menunjukkan persona nasabah yang kuat."
-    )
-
-    st.dataframe(
-        result,
-        hide_index=True,
-        use_container_width=True,
-    )
-
-
-# ==========================================
-# TABS
-# ==========================================
-
-
-tab_cluster, tab_classification = st.tabs(
+tab_clustering, tab_classification = st.tabs(
     [
         "📊 Clustering",
         "🎯 Classification",
@@ -210,87 +32,281 @@ tab_cluster, tab_classification = st.tabs(
 )
 
 
-with tab_cluster:
-    st.subheader("Clustering Nasabah")
-    st.write("Menentukan cluster menggunakan KMeans tanpa PCA.")
+# ==========================================
+# CATEGORICAL OPTIONS
+# ==========================================
+locations = [
+    "San Diego",
+    "Houston",
+    "Mesa",
+    "Raleigh",
+    "Oklahoma City",
+    "Seattle",
+    "Indianapolis",
+    "Detroit",
+    "Nashville",
+    "Albuquerque",
+    "Memphis",
+    "Louisville",
+    "Denver",
+    "Austin",
+    "Columbus",
+    "Los Angeles",
+    "Las Vegas",
+    "Milwaukee",
+    "Miami",
+    "Baltimore",
+    "San Francisco",
+    "San Antonio",
+    "Philadelphia",
+    "Charlotte",
+    "Tucson",
+    "Kansas City",
+    "Virginia Beach",
+    "Omaha",
+    "Dallas",
+    "Atlanta",
+    "Boston",
+    "Jacksonville",
+    "Fort Worth",
+    "Colorado Springs",
+    "Sacramento",
+    "Fresno",
+    "Portland",
+    "Washington",
+    "Chicago",
+    "New York",
+    "Phoenix",
+    "San Jose",
+    "El Paso",
+]
 
-    try:
-        cluster_model = load_cluster_model()
 
-    except FileNotFoundError as error:
-        st.error(f"Model belum tersedia: {error.filename}")
+TransactionType = ["Debit", "Credit"]
+
+Channel = ["ATM", "Online", "Branch"]
+
+CustomerOccupation = ["Doctor", "Student", "Retired", "Engineer"]
+
+
+# ==========================================
+# AGE GROUP FUNCTION
+# ==========================================
+def create_age_group(age):
+    if 18 <= age <= 32:
+        return "rendah"
+
+    elif 33 <= age <= 55:
+        return "sedang"
+
+    elif 56 <= age <= 80:
+        return "tinggi"
 
     else:
-        cluster_categories = {
-            column: encoder.classes_.tolist() for column, encoder in encoders.items()
-        }
+        raise ValueError("CustomerAge harus berada antara 18 dan 80.")
 
-        cluster_data, cluster_submitted = transaction_form(
-            prefix="clustering",
-            categories=cluster_categories,
+
+# ==========================================
+# CLUSTERING TAB
+# ==========================================
+
+with tab_clustering:
+    st.subheader("Customer and Transaction Input")
+    with st.form("clustering_form"):
+        left_column, right_column = st.columns(2)
+        with left_column:
+            transaction_amount = st.number_input(
+                "Transaction Amount", min_value=0.0, value=100.0
+            )
+
+            transaction_type = st.selectbox("Transaction Type", options=TransactionType)
+
+            location = st.selectbox("Location", options=locations)
+
+            channel = st.selectbox("Channel", options=Channel)
+
+        with right_column:
+            customer_age = st.number_input(
+                "Customer Age",
+                min_value=18,
+                max_value=80,
+                value=30,
+                step=1,
+            )
+            customer_occupation = st.selectbox(
+                "Customer Occupation", CustomerOccupation
+            )
+
+            transaction_duration = st.number_input(
+                "Transaction Duration",
+                min_value=10.0,
+                max_value=300.0,
+                value=100.0,
+            )
+
+            login_attempts = st.number_input(
+                "Login Attempts",
+                min_value=1,
+                value=1,
+                step=1,
+            )
+
+            account_balance = st.number_input(
+                "Account Balance",
+                min_value=0.0,
+                value=5000.0,
+            )
+
+        predict = st.form_submit_button(
+            "Prediction",
+            use_container_width=True,
         )
 
-        if cluster_submitted:
-            st.session_state.pop("cluster_result", None)
-
+        if predict:
             try:
-                result = predict_cluster(
-                    data=cluster_data,
-                    model=cluster_model,
-                    encoders=encoders,
-                    scalers=scalers,
-                    age_config=age_config,
+                age_group = create_age_group(customer_age)
+                input_data = pd.DataFrame(
+                    [
+                        {
+                            "TransactionAmount": transaction_amount,
+                            "TransactionType": transaction_type,
+                            "Location": location,
+                            "Channel": channel,
+                            "CustomerAge": customer_age,
+                            "CustomerOccupation": customer_occupation,
+                            "TransactionDuration": transaction_duration,
+                            "LoginAttempts": login_attempts,
+                            "AccountBalance": account_balance,
+                            "AgeGroupBin": age_group,
+                        }
+                    ],
+                )
+                result = predict_cluster(input_data)
+
+                st.success(
+                    f"Prediction result: Cluster {result['cluster']} "
+                    f"— {result['label']}"
                 )
 
-                st.session_state["cluster_result"] = result
+                st.write(result["description"])
 
-            except (ValueError, KeyError) as error:
-                st.error(f"Prediksi gagal: {error}")
+                with st.expander("View Raw Data"):
+                    st.dataframe(
+                        input_data,
+                        hide_index=True,
+                        use_container_width=True,
+                    )
 
-        display_result(
-            state_key="cluster_result",
-            target_column="Cluster",
-        )
+                with st.expander("View Preprocessed Data"):
+                    st.dataframe(
+                        result["processed_data"],
+                        hide_index=True,
+                        use_container_width=True,
+                    )
+
+            except (ValueError, FileNotFoundError) as error:
+                st.error(str(error))
+
+            except Exception as error:
+                st.error(f"Prediction failed: {error}")
 
 
 with tab_classification:
-    st.subheader("Classification Nasabah")
-    st.write("Memprediksi label cluster menggunakan Decision Tree.")
+    st.subheader("Customer and Transaction Input")
+    with st.form("classification_form"):
+        left_column, right_column = st.columns(2)
+        with left_column:
+            transaction_amount = st.number_input(
+                "Transaction Amount", min_value=0.0, value=100.0
+            )
 
-    try:
-        classifier, schema = load_classifier()
+            transaction_type = st.selectbox("Transaction Type", options=TransactionType)
 
-    except FileNotFoundError as error:
-        st.error(f"Model atau schema belum tersedia: {error.filename}")
+            location = st.selectbox("Location", options=locations)
 
-    else:
-        classification_data, classification_submitted = transaction_form(
-            prefix="classification",
-            categories=schema["categories"],
+            channel = st.selectbox("Channel", options=Channel)
+
+        with right_column:
+            customer_age = st.number_input(
+                "Customer Age",
+                min_value=18,
+                max_value=80,
+                value=30,
+                step=1,
+            )
+            customer_occupation = st.selectbox(
+                "Customer Occupation", CustomerOccupation
+            )
+
+            transaction_duration = st.number_input(
+                "Transaction Duration",
+                min_value=10.0,
+                max_value=300.0,
+                value=100.0,
+            )
+
+            login_attempts = st.number_input(
+                "Login Attempts",
+                min_value=1,
+                value=1,
+                step=1,
+            )
+
+            account_balance = st.number_input(
+                "Account Balance",
+                min_value=0.0,
+                value=5000.0,
+            )
+
+        predict = st.form_submit_button(
+            "Prediction",
+            use_container_width=True,
         )
 
-        if classification_submitted:
-            st.session_state.pop("classification_result", None)
-
+        if predict:
             try:
-                result = predict_classification(
-                    data=classification_data,
-                    model=classifier,
-                    schema=schema,
-                    scalers=scalers,
-                    age_config=age_config,
+                age_group = create_age_group(customer_age)
+                input_data = pd.DataFrame(
+                    [
+                        {
+                            "TransactionAmount": transaction_amount,
+                            "TransactionType": transaction_type,
+                            "Location": location,
+                            "Channel": channel,
+                            "CustomerAge": customer_age,
+                            "CustomerOccupation": customer_occupation,
+                            "TransactionDuration": transaction_duration,
+                            "LoginAttempts": login_attempts,
+                            "AccountBalance": account_balance,
+                            "AgeGroupBin": age_group,
+                        }
+                    ],
+                )
+                result = predict_cluster(input_data)
+
+                st.success(
+                    f"Prediction result: Cluster {result['cluster']} "
+                    f"— {result['label']}"
                 )
 
-                st.session_state["classification_result"] = result
+                st.write(result["description"])
 
-            except (ValueError, KeyError) as error:
-                st.error(f"Prediksi gagal: {error}")
+                with st.expander("View Raw Data"):
+                    st.dataframe(
+                        input_data,
+                        hide_index=True,
+                        use_container_width=True,
+                    )
 
-        display_result(
-            state_key="classification_result",
-            target_column="Target",
-        )
+                with st.expander("View Preprocessed Data"):
+                    st.dataframe(
+                        result["processed_data"],
+                        hide_index=True,
+                        use_container_width=True,
+                    )
 
-        st.caption(
-            "Target berasal dari label clustering. Hasil ini bukan penilaian fraud."
-        )
+            except (ValueError, FileNotFoundError) as error:
+                st.error(str(error))
+
+            except Exception as error:
+                st.error(f"Prediction failed: {error}")
