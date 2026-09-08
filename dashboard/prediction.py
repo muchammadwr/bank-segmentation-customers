@@ -22,7 +22,7 @@ clustering_model = joblib.load(MODEL_DIR / "model_clustering.h5")
 classification_model = joblib.load(MODEL_DIR / "decision_tree_model.h5")
 
 # ==========================================
-# CLUSTER INFORMATION
+# INFORMATION
 # ==========================================
 
 CLUSTER_INFORMATION = {
@@ -36,6 +36,23 @@ CLUSTER_INFORMATION = {
     },
     1: {
         "label": "Active Transaction Customer",
+        "description": (
+            "Nasabah dengan usia, durasi transaksi, dan saldo sedikit "
+            "lebih rendah, tetapi nilai transaksinya sedikit lebih tinggi."
+        ),
+    },
+}
+
+CLASSIFICATION_INFORMATION = {
+    0: {
+        "label": "Classification 0",
+        "description": (
+            "Nasabah dengan usia, durasi transaksi, dan saldo sedikit "
+            "lebih tinggi, tetapi nilai transaksinya sedikit lebih rendah."
+        ),
+    },
+    1: {
+        "label": "Classification 1",
         "description": (
             "Nasabah dengan usia, durasi transaksi, dan saldo sedikit "
             "lebih rendah, tetapi nilai transaksinya sedikit lebih tinggi."
@@ -79,3 +96,8 @@ def predict_cluster(data: pd.DataFrame) -> dict:
         "description": cluster_info["description"],
         "processed_data": processed_data,
     }
+
+
+def predict_classification(data):
+    processed_data = preprocess_clustering(data)
+    prediction = classification_model.predict(processed_data)
