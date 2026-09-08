@@ -2,7 +2,7 @@ import joblib
 import pandas as pd
 import streamlit as st
 from preprocessor import preprocess_clustering
-
+from prediction import predict_cluster
 
 # ==========================================
 # CONFIGURATION PAGE
@@ -183,9 +183,6 @@ with tab_clustering:
                     ],
                 )
                 st.success("Input data was successfully created.")
-                st.dataframe(input_data)
-                processed_data = preprocess_clustering(input_data)
-                st.success("Data was successfully preprocessed.")
 
                 with st.expander("View Raw Data"):
                     st.dataframe(
@@ -193,6 +190,11 @@ with tab_clustering:
                         hide_index=True,
                         use_container_width=True,
                     )
+                # Preprocessing
+                processed_data = preprocess_clustering(input_data)
+                # Prediction
+                cluster_result = predict_cluster(processed_data)
+                st.success("Data was successfully preprocessed.")
 
                 with st.expander("View Preprocessed Data"):
                     st.dataframe(
