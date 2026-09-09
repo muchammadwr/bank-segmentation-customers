@@ -97,5 +97,3 @@ def preprocess_clustering(data):
 
     result[NUMERICAL_FEATURES] = scaler_numerical.transform(result[NUMERICAL_FEATURES])
     return result.loc[:, FEATURES]
-
-
