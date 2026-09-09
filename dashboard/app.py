@@ -1,13 +1,11 @@
 import pandas as pd
 import streamlit as st
-from prediction import predict_cluster
+from preprocessor import preprocess_clustering, preprocess_classification
 
 
 # ==========================================
 # CONFIGURATION PAGE
 # ==========================================
-
-
 st.set_page_config(
     page_title="Bank Transaction Segmentation",
     page_icon="🏦",
@@ -16,14 +14,10 @@ st.set_page_config(
 # ==========================================
 # LOAD
 # ==========================================
-
-
 st.title("🏦 Bank Transaction Segmentation")
 st.write(
     "Enter customer and transaction information to identify the transaction segment."
 )
-
-
 tab_clustering, tab_classification = st.tabs(
     [
         "📊 Clustering",
@@ -81,11 +75,8 @@ locations = [
     "El Paso",
 ]
 
-
 TransactionType = ["Debit", "Credit"]
-
 Channel = ["ATM", "Online", "Branch"]
-
 CustomerOccupation = ["Doctor", "Student", "Retired", "Engineer"]
 
 
@@ -95,13 +86,10 @@ CustomerOccupation = ["Doctor", "Student", "Retired", "Engineer"]
 def create_age_group(age):
     if 18 <= age <= 32:
         return "rendah"
-
     elif 33 <= age <= 55:
         return "sedang"
-
     elif 56 <= age <= 80:
         return "tinggi"
-
     else:
         raise ValueError("CustomerAge harus berada antara 18 dan 80.")
 
@@ -120,9 +108,7 @@ with tab_clustering:
             )
 
             transaction_type = st.selectbox("Transaction Type", options=TransactionType)
-
             location = st.selectbox("Location", options=locations)
-
             channel = st.selectbox("Channel", options=Channel)
 
         with right_column:
@@ -181,14 +167,7 @@ with tab_clustering:
                         }
                     ],
                 )
-                result = predict_cluster(input_data)
-
-                st.success(
-                    f"Prediction result: Cluster {result['cluster']} "
-                    f"— {result['label']}"
-                )
-
-                st.write(result["description"])
+                preprocess = preprocess_clustering(input_data)
 
                 with st.expander("View Raw Data"):
                     st.dataframe(
@@ -197,9 +176,9 @@ with tab_clustering:
                         use_container_width=True,
                     )
 
-                with st.expander("View Preprocessed Data"):
+                with st.expander("View Preprocess Data"):
                     st.dataframe(
-                        result["processed_data"],
+                        preprocess,
                         hide_index=True,
                         use_container_width=True,
                     )
@@ -221,9 +200,7 @@ with tab_classification:
             )
 
             transaction_type = st.selectbox("Transaction Type", options=TransactionType)
-
             location = st.selectbox("Location", options=locations)
-
             channel = st.selectbox("Channel", options=Channel)
 
         with right_column:
@@ -282,15 +259,7 @@ with tab_classification:
                         }
                     ],
                 )
-                result = predict_cluster(input_data)
-
-                st.success(
-                    f"Prediction result: Cluster {result['cluster']} "
-                    f"— {result['label']}"
-                )
-
-                st.write(result["description"])
-
+                preprocess = preprocess_classification(input_data)
                 with st.expander("View Raw Data"):
                     st.dataframe(
                         input_data,
@@ -298,9 +267,9 @@ with tab_classification:
                         use_container_width=True,
                     )
 
-                with st.expander("View Preprocessed Data"):
+                with st.expander("View Raw Data"):
                     st.dataframe(
-                        result["processed_data"],
+                        preprocess,
                         hide_index=True,
                         use_container_width=True,
                     )

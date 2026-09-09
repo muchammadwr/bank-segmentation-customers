@@ -1,17 +1,50 @@
 from pathlib import Path
+
 import joblib
+import pandas as pd
+
 
 # ==========================================
 # PATH
 # ==========================================
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODEL_DIR = BASE_DIR / "models"
 
+# ==========================================
+# LOAD CLUSTERING PREPROCESSORS
+# ==========================================
+
+encoder_transaction_type = joblib.load(MODEL_DIR / "encoder_TransactionType.joblib")
+encoder_location = joblib.load(MODEL_DIR / "encoder_Location.joblib")
+encoder_channel = joblib.load(MODEL_DIR / "encoder_Channel.joblib")
+encoder_customer_occupation = joblib.load(
+    MODEL_DIR / "encoder_CustomerOccupation.joblib"
+)
+encoder_age_group = joblib.load(MODEL_DIR / "encoder_AgeGroupBin.joblib")
+scaler_numerical = joblib.load(MODEL_DIR / "scaler_numerical_cols.joblib")
+
+decision_tree_model = joblib.load(MODEL_DIR / "decision_tree_model.h5")
+tuning_classification = joblib.load(MODEL_DIR / "tuning_classification.h5")
+explore_random_forest_classifier_classification = joblib.load(
+    MODEL_DIR / "explore_random_forest_classifier_classification.h5"
+)
+
 
 # ==========================================
-# FEATURE COLUMNS
+# LOAD CLASSIFICATION PREPROCESSING METADATA
 # ==========================================
-FEATURE_COLUMNS = [
+
+# classification_preprocessing = joblib.load(
+#     MODEL_DIR / "classification_preprocessing.joblib"
+# )
+
+
+# ==========================================
+# FEATURES
+# ==========================================
+
+FEATURES = [
     "TransactionAmount",
     "TransactionType",
     "Location",
@@ -33,24 +66,13 @@ CATEGORICAL_COLUMNS = [
 ]
 
 
+NUMERICAL_FEATURES = scaler_numerical.feature_names_in_.tolist()
+
+
 # ==========================================
-# LOAD PREPROCESSING OBJECTS
+# ENCODERS
 # ==========================================
-encoder_transaction_type = joblib.load(MODEL_DIR / "encoder_TransactionType.joblib")
 
-encoder_location = joblib.load(MODEL_DIR / "encoder_Location.joblib")
-
-encoder_channel = joblib.load(MODEL_DIR / "encoder_Channel.joblib")
-
-encoder_customer_occupation = joblib.load(
-    MODEL_DIR / "encoder_CustomerOccupation.joblib"
-)
-
-encoder_age_group = joblib.load(MODEL_DIR / "encoder_AgeGroupBin.joblib")
-
-scaler_numerical = joblib.load(MODEL_DIR / "scaler_numerical_cols.joblib")
-
-NUMERICAL_COLUMNS = scaler_numerical.feature_names_in_.tolist()
 ENCODERS = {
     "TransactionType": encoder_transaction_type,
     "Location": encoder_location,
@@ -61,55 +83,41 @@ ENCODERS = {
 
 
 # ==========================================
-# VALIDATION
+# PREPROCESSING
 # ==========================================
 
 
-def validate_input_columns(data):
-    missing_columns = [
-        column for column in FEATURE_COLUMNS if column not in data.columns
-    ]
-    if missing_columns:
-        raise ValueError(f"Kolom input belum lengkap: {missing_columns}")
-
-
-def validate_category(data, column, encoder):
-    unknown_values = data.loc[
-        ~data[column].isin(encoder.classes_),
-        column,
-    ].unique()
-
-    if len(unknown_values) > 0:
-        raise ValueError(
-            f"Kategori tidak dikenali pada {column}: {unknown_values.tolist()}"
-        )
-
-
-# ==========================================
-# CLUSTERING PREPROCESSING
-# ==========================================
 def preprocess_clustering(data):
-    """
-    Mengubah data mentah dari Streamlit menjadi
-    data numerik sesuai preprocessing training.
-    """
     result = data.copy()
-    validate_input_columns(result)
-    result = result.loc[:, FEATURE_COLUMNS]
+    result = result.loc[:, FEATURES]
+
     for column in CATEGORICAL_COLUMNS:
         encoder = ENCODERS[column]
-
-        validate_category(
-            result,
-            column,
-            encoder,
-        )
         result[column] = encoder.transform(result[column].astype(str))
 
-    result[NUMERICAL_COLUMNS] = scaler_numerical.transform(result[NUMERICAL_COLUMNS])
+    result[NUMERICAL_FEATURES] = scaler_numerical.transform(result[NUMERICAL_FEATURES])
+    return result.loc[:, FEATURES]
 
-    return result.loc[:, FEATURE_COLUMNS]
+
+# ==========================================
+# CLASSIFICATION PREPROCESSING
+# ==========================================
 
 
 def preprocess_classification(data):
     result = data.copy()
+
+    result = result.drop(columns=["Target"], errors="ignore")
+    result = result.loc[:, FEATURES]
+
+    result = pd.get_dummies(
+        result, columns=CATEGORICAL_COLUMNS, drop_first=False, dtype=int
+    )
+    model = explore_random_forest_classifier_classification
+    training_features = model.feature_names_in.tolist()
+    result = result.reindex(
+        columns=training_features,
+        fill_value=0,
+    )
+
+    return result
