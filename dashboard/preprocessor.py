@@ -1,12 +1,9 @@
 from pathlib import Path
-
 import joblib
 
 # ==========================================
 # PATH
 # ==========================================
-
-
 BASE_DIR = Path(__file__).resolve().parent.parent
 MODEL_DIR = BASE_DIR / "models"
 
@@ -26,7 +23,6 @@ FEATURE_COLUMNS = [
     "AccountBalance",
     "AgeGroupBin",
 ]
-
 
 CATEGORICAL_COLUMNS = [
     "TransactionType",
