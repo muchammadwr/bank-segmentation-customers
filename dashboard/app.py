@@ -1,7 +1,10 @@
 import pandas as pd
 import streamlit as st
-from preprocessor import preprocess_clustering, preprocess_classification
-
+from preprocessor import preprocess_clustering
+from prediction import (
+    predict_cluster,
+    predict_classification,
+)
 
 # ==========================================
 # CONFIGURATION PAGE
@@ -168,20 +171,7 @@ with tab_clustering:
                     ],
                 )
                 preprocess = preprocess_clustering(input_data)
-
-                with st.expander("View Raw Data"):
-                    st.dataframe(
-                        input_data,
-                        hide_index=True,
-                        use_container_width=True,
-                    )
-
-                with st.expander("View Preprocess Data"):
-                    st.dataframe(
-                        preprocess,
-                        hide_index=True,
-                        use_container_width=True,
-                    )
+                prediction = predict_classification(preprocess)
 
             except (ValueError, FileNotFoundError) as error:
                 st.error(str(error))
@@ -259,20 +249,7 @@ with tab_classification:
                         }
                     ],
                 )
-                preprocess = preprocess_classification(input_data)
-                with st.expander("View Raw Data"):
-                    st.dataframe(
-                        input_data,
-                        hide_index=True,
-                        use_container_width=True,
-                    )
-
-                with st.expander("View Raw Data"):
-                    st.dataframe(
-                        preprocess,
-                        hide_index=True,
-                        use_container_width=True,
-                    )
+                predict = predict_classification(input_data)
 
             except (ValueError, FileNotFoundError) as error:
                 st.error(str(error))

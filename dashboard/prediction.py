@@ -5,7 +5,6 @@ import pandas as pd
 
 from preprocessor import (
     preprocess_clustering,
-    preprocess_classification,
 )
 
 
@@ -23,7 +22,25 @@ MODEL_DIR = BASE_DIR / "models"
 
 clustering_model = joblib.load(MODEL_DIR / "model_clustering.h5")
 
-classification_model = joblib.load(MODEL_DIR / "tuning_classification.h5")
+classification_pipeline = joblib.load(MODEL_DIR / "classification_pipeline.joblib")
+
+# ==========================================
+# LOAD FEATURES
+# ==========================================
+
+
+CLASSIFICATION_FEATURES = [
+    "TransactionAmount",
+    "TransactionType",
+    "Location",
+    "Channel",
+    "CustomerAge",
+    "CustomerOccupation",
+    "TransactionDuration",
+    "LoginAttempts",
+    "AccountBalance",
+    "AgeGroupBin",
+]
 
 
 # ==========================================
@@ -96,15 +113,10 @@ def predict_cluster(data: pd.DataFrame) -> dict:
 # ==========================================
 # CLASSIFICATION PREDICTION
 # ==========================================
-
-
 def predict_classification(data: pd.DataFrame) -> dict:
-    processed_data = preprocess_classification(data)
-
-    prediction = classification_model.predict(processed_data)
-
+    input_data = data.loc[:, CLASSIFICATION_FEATURES].copy()
+    prediction = classification_pipeline.predict(input_data)
     target = int(prediction[0])
-
     information = CLASSIFICATION_INFORMATION.get(
         target,
         {
@@ -117,5 +129,5 @@ def predict_classification(data: pd.DataFrame) -> dict:
         "target": target,
         "label": information["label"],
         "description": information["description"],
-        "processed_data": processed_data,
+        "input_data": input_data,
     }

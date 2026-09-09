@@ -99,25 +99,3 @@ def preprocess_clustering(data):
     return result.loc[:, FEATURES]
 
 
-# ==========================================
-# CLASSIFICATION PREPROCESSING
-# ==========================================
-
-
-def preprocess_classification(data):
-    result = data.copy()
-
-    result = result.drop(columns=["Target"], errors="ignore")
-    result = result.loc[:, FEATURES]
-
-    result = pd.get_dummies(
-        result, columns=CATEGORICAL_COLUMNS, drop_first=False, dtype=int
-    )
-    model = explore_random_forest_classifier_classification
-    training_features = model.feature_names_in.tolist()
-    result = result.reindex(
-        columns=training_features,
-        fill_value=0,
-    )
-
-    return result
