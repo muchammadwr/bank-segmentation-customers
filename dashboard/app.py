@@ -1,38 +1,24 @@
 import pandas as pd
 import streamlit as st
-from preprocessor import preprocess_clustering
+
 from prediction import (
-    predict_cluster,
     predict_classification,
+    predict_cluster,
 )
+from preprocessor import create_age_group
 
-# ==========================================
-# CONFIGURATION PAGE
-# ==========================================
+
 st.set_page_config(
-    page_title="Bank Transaction Segmentation",
+    page_title="Bank Prototype",
     page_icon="🏦",
+    layout="centered",
 )
 
-# ==========================================
-# LOAD
-# ==========================================
-st.title("🏦 Bank Transaction Segmentation")
-st.write(
-    "Enter customer and transaction information to identify the transaction segment."
-)
-tab_clustering, tab_classification = st.tabs(
-    [
-        "📊 Clustering",
-        "🎯 Classification",
-    ]
-)
+st.title("🏦 Bank Prototype")
+st.write("Enter customer and transaction information to identify the customer segment.")
 
 
-# ==========================================
-# CATEGORICAL OPTIONS
-# ==========================================
-locations = [
+LOCATIONS = [
     "San Diego",
     "Houston",
     "Mesa",
@@ -78,41 +64,40 @@ locations = [
     "El Paso",
 ]
 
-TransactionType = ["Debit", "Credit"]
-Channel = ["ATM", "Online", "Branch"]
-CustomerOccupation = ["Doctor", "Student", "Retired", "Engineer"]
+TRANSACTION_TYPES = ["Debit", "Credit"]
+CHANNELS = ["ATM", "Online", "Branch"]
+OCCUPATIONS = ["Doctor", "Student", "Retired", "Engineer"]
 
 
-# ==========================================
-# AGE GROUP FUNCTION
-# ==========================================
-def create_age_group(age):
-    if 18 <= age <= 32:
-        return "rendah"
-    elif 33 <= age <= 55:
-        return "sedang"
-    elif 56 <= age <= 80:
-        return "tinggi"
-    else:
-        raise ValueError("CustomerAge harus berada antara 18 dan 80.")
-
-
-# ==========================================
-# CLUSTERING TAB
-# ==========================================
-
-with tab_clustering:
-    st.subheader("Customer and Transaction Input")
-    with st.form("clustering_form"):
+def transaction_form(form_key):
+    with st.form(form_key):
         left_column, right_column = st.columns(2)
+
         with left_column:
             transaction_amount = st.number_input(
-                "Transaction Amount", min_value=0.0, value=100.0
+                "Transaction Amount",
+                min_value=0.0,
+                value=100.0,
+                key=f"{form_key}_amount",
             )
 
-            transaction_type = st.selectbox("Transaction Type", options=TransactionType)
-            location = st.selectbox("Location", options=locations)
-            channel = st.selectbox("Channel", options=Channel)
+            transaction_type = st.selectbox(
+                "Transaction Type",
+                TRANSACTION_TYPES,
+                key=f"{form_key}_type",
+            )
+
+            location = st.selectbox(
+                "Location",
+                LOCATIONS,
+                key=f"{form_key}_location",
+            )
+
+            channel = st.selectbox(
+                "Channel",
+                CHANNELS,
+                key=f"{form_key}_channel",
+            )
 
         with right_column:
             customer_age = st.number_input(
@@ -121,16 +106,20 @@ with tab_clustering:
                 max_value=80,
                 value=30,
                 step=1,
+                key=f"{form_key}_age",
             )
+
             customer_occupation = st.selectbox(
-                "Customer Occupation", CustomerOccupation
+                "Customer Occupation",
+                OCCUPATIONS,
+                key=f"{form_key}_occupation",
             )
 
             transaction_duration = st.number_input(
                 "Transaction Duration",
-                min_value=10.0,
-                max_value=300.0,
+                min_value=0.0,
                 value=100.0,
+                key=f"{form_key}_duration",
             )
 
             login_attempts = st.number_input(
@@ -138,121 +127,92 @@ with tab_clustering:
                 min_value=1,
                 value=1,
                 step=1,
+                key=f"{form_key}_login",
             )
 
             account_balance = st.number_input(
                 "Account Balance",
                 min_value=0.0,
                 value=5000.0,
+                key=f"{form_key}_balance",
             )
 
-        predict = st.form_submit_button(
-            "Prediction",
+        submitted = st.form_submit_button(
+            "Predict",
             use_container_width=True,
         )
 
-        if predict:
-            try:
-                age_group = create_age_group(customer_age)
-                input_data = pd.DataFrame(
-                    [
-                        {
-                            "TransactionAmount": transaction_amount,
-                            "TransactionType": transaction_type,
-                            "Location": location,
-                            "Channel": channel,
-                            "CustomerAge": customer_age,
-                            "CustomerOccupation": customer_occupation,
-                            "TransactionDuration": transaction_duration,
-                            "LoginAttempts": login_attempts,
-                            "AccountBalance": account_balance,
-                            "AgeGroupBin": age_group,
-                        }
-                    ],
+    age_group = create_age_group(customer_age)
+
+    data = pd.DataFrame(
+        [
+            {
+                "TransactionAmount": transaction_amount,
+                "CustomerAge": customer_age,
+                "TransactionDuration": transaction_duration,
+                "LoginAttempts": login_attempts,
+                "AccountBalance": account_balance,
+                "TransactionType": transaction_type,
+                "Location": location,
+                "Channel": channel,
+                "CustomerOccupation": customer_occupation,
+                "AgeGroupBin": age_group,
+            }
+        ]
+    )
+
+    return data, submitted
+
+
+tab_clustering, tab_classification = st.tabs(
+    [
+        "📊 Clustering",
+        "🎯 Classification",
+    ]
+)
+
+
+with tab_clustering:
+    st.subheader("Clustering")
+
+    cluster_data, cluster_submitted = transaction_form("clustering_form")
+
+    if cluster_submitted:
+        try:
+            result = predict_cluster(cluster_data)
+
+            st.success(f"Prediction result: Cluster {result['prediction']}")
+
+            with st.expander("View input data"):
+                st.dataframe(
+                    cluster_data,
+                    hide_index=True,
+                    use_container_width=True,
                 )
-                preprocess = preprocess_clustering(input_data)
-                prediction = predict_classification(preprocess)
 
-            except (ValueError, FileNotFoundError) as error:
-                st.error(str(error))
-
-            except Exception as error:
-                st.error(f"Prediction failed: {error}")
+        except Exception as error:
+            st.error(f"Prediction failed: {error}")
 
 
 with tab_classification:
-    st.subheader("Customer and Transaction Input")
-    with st.form("classification_form"):
-        left_column, right_column = st.columns(2)
-        with left_column:
-            transaction_amount = st.number_input(
-                "Transaction Amount", min_value=0.0, value=100.0
-            )
+    st.subheader("Classification")
 
-            transaction_type = st.selectbox("Transaction Type", options=TransactionType)
-            location = st.selectbox("Location", options=locations)
-            channel = st.selectbox("Channel", options=Channel)
+    classification_data, classification_submitted = transaction_form(
+        "classification_form"
+    )
 
-        with right_column:
-            customer_age = st.number_input(
-                "Customer Age",
-                min_value=18,
-                max_value=80,
-                value=30,
-                step=1,
-            )
-            customer_occupation = st.selectbox(
-                "Customer Occupation", CustomerOccupation
-            )
+    if classification_submitted:
+        try:
+            result = predict_classification(classification_data)
 
-            transaction_duration = st.number_input(
-                "Transaction Duration",
-                min_value=10.0,
-                max_value=300.0,
-                value=100.0,
-            )
+            st.success(f"Prediction result: Class {result['prediction']}")
 
-            login_attempts = st.number_input(
-                "Login Attempts",
-                min_value=1,
-                value=1,
-                step=1,
-            )
-
-            account_balance = st.number_input(
-                "Account Balance",
-                min_value=0.0,
-                value=5000.0,
-            )
-
-        predict = st.form_submit_button(
-            "Prediction",
-            use_container_width=True,
-        )
-
-        if predict:
-            try:
-                age_group = create_age_group(customer_age)
-                input_data = pd.DataFrame(
-                    [
-                        {
-                            "TransactionAmount": transaction_amount,
-                            "TransactionType": transaction_type,
-                            "Location": location,
-                            "Channel": channel,
-                            "CustomerAge": customer_age,
-                            "CustomerOccupation": customer_occupation,
-                            "TransactionDuration": transaction_duration,
-                            "LoginAttempts": login_attempts,
-                            "AccountBalance": account_balance,
-                            "AgeGroupBin": age_group,
-                        }
-                    ],
+            with st.expander("View input data"):
+                st.dataframe(
+                    classification_data,
+                    hide_index=True,
+                    use_container_width=True,
                 )
-                predict = predict_classification(input_data)
 
-            except (ValueError, FileNotFoundError) as error:
-                st.error(str(error))
-
-            except Exception as error:
-                st.error(f"Prediction failed: {error}")
+        except Exception as error:
+            st.error(f"Prediction failed: {error}")
